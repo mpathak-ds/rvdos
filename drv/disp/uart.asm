@@ -7,8 +7,41 @@
 ;--*
 
 .section .text
+.global UartInitialize
 .global UartWriteChar
 .global UartWriteString
+
+;
+; FUNCTION DESCRIPTION
+;
+; This function enables the clock for the USART1.
+;
+; FUNCTION PARAMETERS
+;
+; None.
+;
+; FUNCTION CLOBBERS
+;
+; t0, t1
+;
+UartInitialize:
+	;First, enable the USART1 clock..
+	;RCC_APB2PCENR.USART1EN
+	;|= (1<<14)
+	lui t0, 0x40021
+	lw t1, 24(t0)
+	li t2, 0x4000
+	or t1, t1, t2
+	sw t1, 24(t0)
+
+	;Enable USART1 itself
+	;USART1_CTLR1
+	;=(1 << 13) | (1 << 3)
+
+	li t0, 0x4001380C
+	li t1, 0x2008
+	sw t1, 0(t0)
+	ret
 
 ;
 ; FUNCTION DESCRIPTION
