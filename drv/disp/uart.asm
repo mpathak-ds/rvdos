@@ -1,0 +1,63 @@
+;*++
+;    Copyright Driftless Software Pvt. Ltd 2026
+;    uart.asm
+;    14/09/26
+;    mpathak
+;    This module handles driving the USART1 onboard.
+;--*
+
+.section .text
+.global UartWriteChar
+.global UartWriteString
+
+;
+; FUNCTION DESCRIPTION
+;
+; This function writes a single character to the output USART1.
+;
+; FUNCTION PARAMETERS
+;
+; t3 - Character to write.
+;
+; FUNCTION CLOBBERS
+;
+; t0, t1, t2
+;
+UartWriteChar:
+	;wait for TXE
+	li t0, 0x40013800
+	li t1, 0x80
+uart_l1:
+	and t2, t0, t1
+	bnez t2, uart_l1
+
+	li t0, 0x40013804
+	sw t3, 0(t0)
+	ret
+
+;
+; FUNCTION DESCRIPTION
+;
+; This function writes a null terminated string to the output
+; USART1.
+;
+; FUNCTION PARAMETERS
+;
+; t4 - String address.
+;
+; FUNCTION CLOBBERS
+;
+; t0
+;
+UartWriteString:
+uart_w_l1:
+	lbu t0, 0(t4)
+	beqz t0, uart_w_e1
+
+	mv t3, t0
+	call UartWriteChar
+	
+	add t4, t4, 1
+	j uart_w_l1
+uart_w_e1:
+	ret
