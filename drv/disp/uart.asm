@@ -35,7 +35,7 @@ UartInitialize:
 	sw t1, 24(t0)
 
 	;Enable USART1 itself
-	;USART1_CTLR1
+	;USART1_CTLR1sex
 	;=(1 << 13) | (1 << 3)
 
 	li t0, 0x4001380C
