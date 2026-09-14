@@ -21,9 +21,12 @@
 MainStartup:
 	;Initialize USART1
 	call UartInitialize
-	
-	;Print boot banner.
+
 	la t4, welcome_banner
+	call LibStrlen
+
+	;Print boot banner.
+	;la t4, welcome_banner
 	call UartWriteString
 
 main_loop: j main_loop

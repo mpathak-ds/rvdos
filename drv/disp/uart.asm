@@ -22,7 +22,7 @@
 ;
 ; FUNCTION CLOBBERS
 ;
-; t0, t1
+; t0, t1, t2
 ;
 UartInitialize:
 	;First, enable the USART1 clock..
@@ -54,18 +54,32 @@ UartInitialize:
 ;
 ; FUNCTION CLOBBERS
 ;
-; t0, t1, t2
+; None.
 ;
 UartWriteChar:
+	;prologue
+	addi sp, sp, -12
+	sw t0, 8(sp)
+	sw t1, 4(sp)
+	sw t2, 0(sp)
+
 	;wait for TXE
 	li t0, 0x40013800
 	li t1, 0x80
 uart_l1:
-	and t2, t0, t1
-	bnez t2, uart_l1
+	lw t2, 0(t0)
+	and t2, t2, t1
+	beqz t2, uart_l1
 
 	li t0, 0x40013804
 	sw t3, 0(t0)
+
+	;epilogue
+	lw t2, 0(sp)
+	lw t1, 4(sp)
+	lw t0, 8(sp)
+	addi sp, sp, 12
+	
 	ret
 
 ;
@@ -80,9 +94,16 @@ uart_l1:
 ;
 ; FUNCTION CLOBBERS
 ;
-; t0
+; None.
 ;
 UartWriteString:
+	;prologue
+	addi sp, sp, -16
+	sw ra, 12(sp)
+	sw t4, 8(sp)
+	sw t3, 4(sp)
+	sw t0, 0(sp)
+
 uart_w_l1:
 	lbu t0, 0(t4)
 	beqz t0, uart_w_e1
@@ -90,7 +111,13 @@ uart_w_l1:
 	mv t3, t0
 	call UartWriteChar
 	
-	add t4, t4, 1
+	addi t4, t4, 1
 	j uart_w_l1
 uart_w_e1:
+	;epilogue
+	lw t0, 0(sp)
+	lw t3, 4(sp)
+	lw t4, 8(sp)
+	lw ra, 12(sp)
+	addi sp, sp, 16
 	ret
