@@ -1,22 +1,21 @@
 ;*++
 ;    Copyright Driftless Software Pvt. Ltd 2026
-;    help.asm
+;    echo.asm
 ;    15/09/26
 ;    mpathak
-;    HELP command.
+;    ECHO command.
 ;--*
 
 .section .text
-.global CmdHelp
+.global CmdEcho
 
-CmdHelp:
+CmdEcho:
 	addi sp, sp, -4
 	sw ra, 0(sp)
-	la a0, help_str
+	;args already in a0
 	call WriteString
+	li a0, '\n'
+	call WriteCharacter
 	lw ra, 0(sp)
 	addi sp, sp, 4
 	ret
-
-.data
-help_str: .string "help, ver, echo\n"

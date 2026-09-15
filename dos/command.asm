@@ -146,10 +146,12 @@ unknown_msg: .string "Bad command: "
 cmd_table:
 	.word cmd_name_ver, CmdVer
 	.word cmd_name_help, CmdHelp
+	.word cmd_name_echo, CmdEcho
 	.word 0 ;end of table
 
 cmd_name_ver: .string "ver"
 cmd_name_help: .string "help"
+cmd_name_echo: .string "echo"
 
 .bss
 .align 4

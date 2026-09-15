@@ -28,7 +28,7 @@
 ;
 ; t0 - Length of string.
 ;
-LibStrlen:
+StrLen:
 	;prologue
 	addi sp, sp, -8
 	sw t1, 4(sp)

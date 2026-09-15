@@ -26,13 +26,15 @@ rv32_make:
 	sed 's/;.*$$//' dos/api.asm > preproc/api.s
 	sed 's/;.*$$//' lib/str.asm > preproc/str.s
 	sed 's/;.*$$//' drv/disp/uart.asm > preproc/uart.s
+	
 	sed 's/;.*$$//' dos/ver.asm > preproc/ver.s
 	sed 's/;.*$$//' dos/help.asm > preproc/help.s
+	sed 's/;.*$$//' dos/echo.asm > preproc/echo.s
 
 	# Compile
 	riscv64-unknown-elf-gcc -march=rv32imafc -mabi=ilp32f -nostdlib -I../inc -T link.ld \
 	preproc/fwboot.s preproc/main.s preproc/cmd.s preproc/api.s preproc/str.s preproc/uart.s preproc/ver.s \
-	preproc/help.s -o boot.elf
+	preproc/help.s preproc/echo.s -o boot.elf
 
 	# Rid of all preprocessing evidence!
 	rm -rf preproc
