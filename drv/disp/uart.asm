@@ -10,6 +10,7 @@
 .global UartInitialize
 .global UartWriteChar
 .global UartWriteString
+.global UartReadCharB
 
 ;
 ; FUNCTION DESCRIPTION
@@ -22,7 +23,7 @@
 ;
 ; FUNCTION CLOBBERS
 ;
-; t0, t1, t2
+; t0, t1, t2, t3
 ;
 UartInitialize:
 	;First, enable the USART1 clock..
@@ -30,16 +31,33 @@ UartInitialize:
 	;|= (1<<14)
 	lui t0, 0x40021
 	lw t1, 24(t0)
+	li t2, 0x04
+	or t1, t1, t2
+	sw t1, 24(t0)
+	
 	li t2, 0x4000
 	or t1, t1, t2
 	sw t1, 24(t0)
 
+	;GPIO setup
+	;GPIOA_CFGHR
+	;&= ~(0xF << 4)
+	;|= (0xB << 4);
+
+	li t0, 0x40010804
+	lw t1, 0(t0)
+	li t2, 0xFFFFFF0F
+	and t1, t1, t2
+	li t3, 0x000000B0
+	or t1, t1, t3
+	sw t1, 0(t0)
+
 	;Enable USART1 itself
-	;USART1_CTLR1sex
-	;=(1 << 13) | (1 << 3)
+	;USART1_CTLR1
+	;=(1 << 13) | (1 << 3) | (1 << 2) | (1 << 5)
 
 	li t0, 0x4001380C
-	li t1, 0x2008
+	li t1, 0x202C
 	sw t1, 0(t0)
 	ret
 
@@ -120,4 +138,44 @@ uart_w_e1:
 	lw t4, 8(sp)
 	lw ra, 12(sp)
 	addi sp, sp, 16
+	ret
+	
+;
+; FUNCTION DESCRIPTION
+;
+; This function polls and reads a character.
+;
+; FUNCTION PARAMETERS
+;
+; None.
+;
+; FUNCTION CLOBBERS
+;
+; None.
+;
+; FUNCTION RETURN
+;
+; t0 - Read character.
+;
+UartReadCharB:
+	;prologue
+	addi sp, sp, -8
+	sw t3, 4(sp)
+	sw t2, 0(sp)
+
+	li t3, 0x40013800
+	
+uart_readb_l1:
+	lw t2, 0(t3)
+	and t2, t2, 0x20
+	beqz t2, uart_readb_l1
+
+	li t3, 0x40013804
+	lb t0, 0(t3)
+
+	;epilogue
+	lw t2, 0(sp)
+	lw t3, 4(sp)
+	addi sp, sp, 8
+	
 	ret
