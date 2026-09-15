@@ -48,12 +48,12 @@ MainHandleTrap:
 	;a1=arg 1
 	lw t1, 20(s0)
 
-	;ecall 1
-	li t2, 1
+	;ecall 0
+	li t2, 0
 	beq t0, t2, .ex_write_char
 
-	;ecall 2
-	li t2, 2
+	;ecall 1
+	li t2, 1
 	beq t0, t2, .ex_read_char
 
 .trap_exit:
@@ -62,14 +62,14 @@ MainHandleTrap:
 	addi sp, sp, 16
 	ret
 
-;ECALL 1 - WriteCharacter
+;ECALL 0 - WriteCharacter
 ;a1 - arg1
 .ex_write_char:
 	mv a0, t1
 	call WriteCharacter
 	j .trap_exit
 
-;ECALL 2 - ReadCharacterB
+;ECALL 1 - ReadCharacterB
 ;a0 - return char
 .ex_read_char:
 	call ReadCharacterB

@@ -147,11 +147,13 @@ cmd_table:
 	.word cmd_name_ver, CmdVer
 	.word cmd_name_help, CmdHelp
 	.word cmd_name_echo, CmdEcho
+	.word cmd_name_emu, EmuStartup
 	.word 0 ;end of table
 
 cmd_name_ver: .string "ver"
 cmd_name_help: .string "help"
 cmd_name_echo: .string "echo"
+cmd_name_emu: .string "emutest"
 
 .bss
 .align 4
