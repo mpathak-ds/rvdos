@@ -66,6 +66,7 @@ TrapHandler:
 	li t1, 0xb
 	bne t0, t1, .skip_ecall
 
+	mv a0, sp
 	call MainHandleTrap
 
 	;advance by 4 if ecall

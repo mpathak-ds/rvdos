@@ -38,11 +38,26 @@ main_loop: j main_loop
 MainHandleTrap:
 	addi sp, sp, -16
 	sw ra, 12(sp)
+	sw s0, 8(sp)
+
+	;saved trap frame
+	mv s0, a0
+
+	;syscall num in a0
+	lw t0, 16(s0)
+	;a1=arg 1
+	lw t1, 20(s0)
 
 	;ecall 1
-	li t0, 1
-	beq a0, t0, .ex_write_char
+	li t2, 1
+	beq t0, t2, .ex_write_char
 
+	;ecall 2
+	li t2, 2
+	beq t0, t2, .ex_read_char
+
+.trap_exit:
+	lw s0, 8(sp)
 	lw ra, 12(sp)
 	addi sp, sp, 16
 	ret
@@ -50,9 +65,14 @@ MainHandleTrap:
 ;ECALL 1 - WriteCharacter
 ;a1 - arg1
 .ex_write_char:
-	mv a0, a1
+	mv a0, t1
 	call WriteCharacter
+	j .trap_exit
 
-	lw ra, 12(sp)
-	addi sp, sp, 16
-	ret
+;ECALL 2 - ReadCharacterB
+;a0 - return char
+.ex_read_char:
+	call ReadCharacterB
+	;return val
+	sw a0, 16(s0)
+	j .trap_exit
