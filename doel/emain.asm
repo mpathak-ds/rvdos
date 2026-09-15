@@ -129,13 +129,31 @@ EmuStartup:
 	srli t4, s0, 8
 	andi t4, t4, 0xFF
 
-	;t4 now has function num from AH
+	;t4 now has function num from AH..
+	;check for EXIT first
+	li t5, 0x4C
+	beq t4, t5, .emu_int21h_exit
+	;print char
+	li t5, 0x02
+	beq t4, t5, .emu_int21h_pchar
 
+	;unknown
 	;just write a char for now ..
 	li a0, 0
 	li a1, 'H'
 	ecall
 	
+	j .emu_fetch_byte
+
+.emu_int21h_exit:
+	;gracefully exit
+	ret
+
+.emu_int21h_pchar:
+	li a0, 0
+	;need to emulate DL..
+	li a1, 'A'
+	ecall
 	j .emu_fetch_byte
 
 .data
