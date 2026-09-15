@@ -7,7 +7,8 @@
 ;--*
 
 .section .text
-.global LibStrlen
+.global StrLen
+.global StrCmp
 
 ;
 ; FUNCTION DESCRIPTION
@@ -48,4 +49,37 @@ lib_strlen_e1:
 	lw t1, 4(sp)
 	lw t4, 0(sp)
 	addi sp, sp, 8
+	ret
+
+;
+; FUNCTION DESCRIPTION
+;
+; This function compares two strings.
+;
+; FUNCTION PARAMETERS
+;
+; a0, a1 - Pointers to both strings.
+;
+; FUNCTION CLOBBERS
+;
+; None.
+;
+; FUNCTION RETURN
+;
+; a0 - 0 if both equal, 1 otherwise.
+;
+StrCmp:
+.sc_loop:
+	lb t0, 0(a0)
+	lb t1, 0(a1)
+	bne t0, t1, .sc_ne
+	beqz t0, .sc_eq
+	addi a0, a0, 1
+	addi a1, a1, 1
+	j .sc_loop
+.sc_ne:
+	li a0, 1
+	ret
+.sc_eq:
+	li a0, 0
 	ret
