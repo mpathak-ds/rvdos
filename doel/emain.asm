@@ -3,7 +3,7 @@
 ;    emain.asm
 ;    14/09/26
 ;    mpathak
-;    This module is the main entry for DOEL.
+;    This module is the main entry for DOEL86.
 ;--*
 
 .section .text
@@ -22,33 +22,46 @@ EmuStartup:
 	;
 	;We do pinned register mapping for fast exec, and so AX in 8086
 	;is pinned in a single register s0. We do masking to find AL and
-	;AH. Similarly s2 stores guest instruction pointer.
+	;AH. Similarly s2 stores guest base mem addr. s3 stores CS and
+	;s1 stores IP.
 	;
 
+	;CS
+	li s3, 0
+	;guest base
 	la s2, d_test_code
+	;IP
+	li s1, 0
 
 	;
-	;We use t0 as how many bytes to fetch.
 	;t1 for matching opcode.
 	;t2 for opcode itself.
 	;
 
-	li t0, 2
 	li t1, 0
 
 	;clear regs
 	li s0, 0
 
 .emu_fetch_byte:
+	;phys = s2+(s3<<4)+s1
+	slli t5, s3, 4
+	add t5, t5, s1
+	add t5, t5, s2
+	lbu t2, 0(t5)
+	addi s1, s1, 1
+
 	;MOV AL, imm8
 	li t1, 0xB0
-	lbu t2, 0(s2)
 	beq t2, t1, .emu_handle_movalimm8
 
-	;advance addr and decrement bytes fetch
-	addi s2, s2, 1
-	addi t0, t0, -1
-	bnez t0, .emu_fetch_byte
+	;MOV AH, imm8
+	li t1, 0xB4
+	beq t2, t1, .emu_handle_movahimm8
+
+	;INT imm8
+	li t1, 0xCD
+	beq t2, t1, .emu_handle_int
 
 .emu_exit:
 	;hang for gdb
@@ -57,15 +70,72 @@ EmuStartup:
 .emu_handle_movalimm8:
 	;MOV AL, imm8
 
-	;advance by 1 to see imm8
-	lbu t3, 1(s2)
+	;fetch at CS:IP
+	slli t5, s3, 4
+	add t5, t5, s1
+	add t5, t5, s2
+	lbu t3, 0(t5)
+	addi s1, s1, 1
+
 	;t3 now has imm8 so clear AL
 	andi t4, s0, -256
 	;set AL
 	or s0, t4, t3
-	;consume
-	addi s2, s2, 2
 	;done
+	j .emu_fetch_byte
+
+.emu_handle_movahimm8:
+	;MOV AH, imm8
+
+	;fetch at CS:IP
+	slli t5, s3, 4
+	add t5, t5, s1
+	add t5, t5, s2
+	lbu t3, 0(t5)
+	addi s1, s1, 1
+
+	;clear AH
+	li t4, 0xFFFF00FF
+	and s0, s0, t4
+	;shift imm8
+	slli t3, t3, 8
+	;set
+	or s0, s0, t3
+	;done
+	j .emu_fetch_byte
+
+.emu_handle_int:
+	;INT imm8
+
+	;fetch at CS:IP
+	slli t5, s3, 4
+	add t5, t5, s1
+	add t5, t5, s2
+	lbu t3, 0(t5)
+	addi s1, s1, 1
+
+	;t3 now has int number
+	;crude check for 21h..
+	li t4, 0x21
+	beq t3, t4, .emu_int21h_hook
+	
+	j .emu_fetch_byte
+
+.emu_int21h_hook:
+	;INT 21H
+
+	;extract function number
+	li t4, 0x00
+	srli t4, s0, 8
+	andi t4, t4, 0xFF
+
+	;t4 now has function num from AH
+
+	;just write a char for now ..
+	li a0, 0
+	li a1, 'H'
+	ecall
+	
 	j .emu_fetch_byte
 
 .data
@@ -74,3 +144,7 @@ EmuStartup:
 d_test_code:
 	;MOV AL, 42H
 	.byte 0xB0, 0x42
+	;MOV AH, 4CH
+	.byte 0xB4, 0x4C
+	;INT 21H
+	.byte 0xCD, 0x21
