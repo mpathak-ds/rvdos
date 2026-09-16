@@ -153,7 +153,7 @@ cmd_table:
 cmd_name_ver: .string "ver"
 cmd_name_help: .string "help"
 cmd_name_echo: .string "echo"
-cmd_name_emu: .string "emutest"
+cmd_name_emu: .string "doel86"
 
 .bss
 .align 4

@@ -8,6 +8,7 @@
 
 .section .text
 .global EmuStartup
+.global .emu_fetch_byte
 
 ;
 ; FUNCTION DESCRIPTION
@@ -24,6 +25,14 @@ EmuStartup:
 	;is pinned in a single register s0. We do masking to find AL and
 	;AH. Similarly s2 stores guest base mem addr. s3 stores CS and
 	;s1 stores IP.
+	;
+	;Full register context:
+	;
+	;s0=AX
+	;s1=IP
+	;s2=GUEST BASE
+	;s3=CS
+	;s4=DX
 	;
 
 	;CS
@@ -42,6 +51,7 @@ EmuStartup:
 
 	;clear regs
 	li s0, 0
+	li s4, 0
 
 .emu_fetch_byte:
 	;phys = s2+(s3<<4)+s1
@@ -58,6 +68,14 @@ EmuStartup:
 	;MOV AH, imm8
 	li t1, 0xB4
 	beq t2, t1, .emu_handle_movahimm8
+
+	;MOV DL, imm8
+	li t1, 0xB2
+	beq t2, t1, .emu_handle_movdlimm8
+
+	;MOV DH, imm8
+	li t1, 0xB6
+	beq t2, t1, .emu_handle_movdhimm8
 
 	;INT imm8
 	li t1, 0xCD
@@ -104,6 +122,44 @@ EmuStartup:
 	;done
 	j .emu_fetch_byte
 
+.emu_handle_movdlimm8:
+	;MOV DL, imm8
+
+	;fetch at CS:IP
+	slli t5, s3, 4
+	add t5, t5, s1
+	add t5, t5, s2
+	lbu t3, 0(t5)
+	addi s1, s1, 1
+
+	;t3 now has imm8 so clear DL
+	andi t4, s4, -256
+	;set DL
+	or s4, t4, t3
+	
+	;done
+	j .emu_fetch_byte
+
+.emu_handle_movdhimm8:
+	;MOV DH, imm8
+
+	;fetch at CS:IP
+	slli t5, s3, 4
+	add t5, t5, s1
+	add t5, t5, s2
+	lbu t3, 0(t5)
+	addi s1, s1, 1
+
+	;clear DH
+	li t4, 0xFFFF00FF
+	and s4, s4, t4
+	;shift imm8
+	slli t3, t3, 8
+	;set
+	or s4, s4, t3
+	;done
+	j .emu_fetch_byte
+
 .emu_handle_int:
 	;INT imm8
 
@@ -132,10 +188,10 @@ EmuStartup:
 	;t4 now has function num from AH..
 	;check for EXIT first
 	li t5, 0x4C
-	beq t4, t5, .emu_int21h_exit
+	beq t4, t5, EmuIntExit
 	;print char
 	li t5, 0x02
-	beq t4, t5, .emu_int21h_pchar
+	beq t4, t5, EmuIntPchar
 
 	;unknown
 	;just write a char for now ..
@@ -144,22 +200,17 @@ EmuStartup:
 	ecall
 	
 	j .emu_fetch_byte
-
-.emu_int21h_exit:
-	;gracefully exit
-	ret
-
-.emu_int21h_pchar:
-	li a0, 0
-	;need to emulate DL..
-	li a1, 'A'
-	ecall
-	j .emu_fetch_byte
-
+	
 .data
 .align 4
 ;x86 instructions test
 d_test_code:
+	;MOV AH, 02H
+	.byte 0xB4, 0x02
+	;MOV DL, 48H
+	.byte 0xB2, 0x48
+	;INT 21H
+	.byte 0xCD, 0x21
 	;MOV AL, 42H
 	.byte 0xB0, 0x42
 	;MOV AH, 4CH

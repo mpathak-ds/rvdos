@@ -1,0 +1,6 @@
+ORG 100H
+
+start:
+	MOV AH, 02H
+	MOV DL, 'A'
+	INT 21H

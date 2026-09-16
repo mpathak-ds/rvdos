@@ -1,0 +1,9 @@
+ORG 100H
+
+start:
+	;EXIT CODE
+	MOV AL, 42H
+	;EXIT FUNC
+	MOV AH, 4CH
+	;CALL
+	INT 21H
