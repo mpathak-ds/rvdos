@@ -22,6 +22,21 @@
 MainStartup:
 	;Initialize USART1
 	call UartInitialize
+	;Initialize flash
+	call FpecInitialize
+
+	;write 32 bit payload
+	addi sp, sp, -4
+	li t0, 0xCAFEF00D
+	sw t0, 0(sp)
+
+	;target address
+	li a0, 0x08010000
+	mv a1, sp
+	;byte count
+	li a2, 4
+	call WriteStorage
+	addi sp, sp, 4
 	
 	;Launch command
 	call CmdInit

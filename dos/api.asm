@@ -11,6 +11,7 @@
 .global WriteString
 .global ReadCharacterB
 .global ReadLine
+.global WriteStorage
 
 ;
 ; FUNCTION DESCRIPTION
@@ -183,4 +184,71 @@ ReadLine:
     lw s2, 16(sp)
     addi sp, sp, 32
 	
+	ret
+
+;
+; FUNCTION DESCRIPTION
+;
+; This function writes data to flash.
+;
+; FUNCTION PARAMETERS
+;
+; a0 - Target address (16 bit aligned).
+; a1 - Source data pointer.
+; a2 - Length ( bytes).
+;
+; FUNCTION CLOBBERS
+;
+; None.
+;
+WriteStorage:
+	addi sp, sp, -32
+	sw ra, 28(sp)
+	sw s0, 24(sp)
+	sw s1, 20(sp)
+	sw s2, 16(sp)
+
+	mv s0, a0
+	mv s1, a1
+	mv s2, a2
+
+	;
+	;Note that if the caller is trying to only MODIFY a page with
+	;important existing data, they must read the page into their
+	;buffer, modify with entire page data and only pass THAT to
+	;this function as flash memory is tricky and this function era
+	;ses the entire page.
+	;
+
+	;unlock
+	jal FpecUnlock
+
+	;erase page
+	li t0, ~0x3FF
+	and a0, s0, t0
+	jal FpecErasePage
+	bnez a0, .L_simple_err
+
+	;write
+	mv a0, s0
+	mv a1, s1
+	mv a2, s2
+	jal FpecWrite
+	bnez a0, .L_simple_err
+
+	;lock
+	jal FpecLock
+	li a0, 0
+	j .L_simple_exit
+
+.L_simple_err:
+	jal FpecLock
+	li a0, -1
+
+.L_simple_exit:
+	lw s2, 16(sp)
+	lw s1, 20(sp)
+	lw s0, 24(sp)
+	lw ra, 28(sp)
+	addi sp, sp, 32
 	ret
