@@ -9,6 +9,7 @@
 .section .text
 .global EmuIntPchar
 .global EmuIntExit
+.global EmuIntPstring
 
 ;
 ;AH=2H
@@ -24,4 +25,31 @@ EmuIntPchar:
 ;AH=4CH
 ;
 EmuIntExit:
+	;just print newline and go
+	li a0, 0
+	li a1, '\n'
+	ecall
 	ret
+
+;
+;AH=09H
+;
+EmuIntPstring:
+	;calc phys pointer
+	slli t5, s5, 4
+	add t5, t5, s4
+	add t5, t5, s2
+.pstring_loop:
+	lbu a1, 0(t5)
+	;DOS only terminates off dollar sign
+	li t6, '$'
+	beq a1, t6, .pstring_done
+
+	li a0, 0
+	;a1 already has char
+	ecall
+
+	addi t5, t5, 1
+	j .pstring_loop
+.pstring_done:
+	j .emu_fetch_byte

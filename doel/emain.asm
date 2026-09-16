@@ -33,6 +33,7 @@ EmuStartup:
 	;s2=GUEST BASE
 	;s3=CS
 	;s4=DX
+	;s5=DS
 	;
 
 	;CS
@@ -41,6 +42,8 @@ EmuStartup:
 	la s2, d_test_code
 	;IP
 	li s1, 0
+	;DS
+	li s5, 0
 
 	;
 	;t1 for matching opcode.
@@ -76,6 +79,10 @@ EmuStartup:
 	;MOV DH, imm8
 	li t1, 0xB6
 	beq t2, t1, .emu_handle_movdhimm8
+
+	;MOV DX, imm16
+	li t1, 0xBA
+	beq t2, t1, .emu_handle_movdximm16
 
 	;INT imm8
 	li t1, 0xCD
@@ -160,6 +167,30 @@ EmuStartup:
 	;done
 	j .emu_fetch_byte
 
+.emu_handle_movdximm16:
+	;MOV DX, imm16
+
+	;low byte
+	slli t5, s3, 4
+	add t5, t5, s1
+	add t5, t5, s2
+	lbu t3, 0(t5)
+	addi s1, s1, 1
+
+	;hi byte
+	slli t5, s3, 4
+	add t5, t5, s1
+	add t5, t5, s2
+	lbu t4, 0(t5)
+	addi s1, s1, 1
+
+	;combine
+	slli t4, t4, 8
+	or s4, t3, t4
+
+	;done
+	j .emu_fetch_byte
+
 .emu_handle_int:
 	;INT imm8
 
@@ -192,28 +223,32 @@ EmuStartup:
 	;print char
 	li t5, 0x02
 	beq t4, t5, EmuIntPchar
+	;print string ($)
+	li t5, 0x09
+	beq t4, t5, EmuIntPstring
 
 	;unknown
 	;just write a char for now ..
 	li a0, 0
-	li a1, 'H'
+	li a1, '!'
 	ecall
 	
 	j .emu_fetch_byte
-	
+
 .data
 .align 4
 ;x86 instructions test
 d_test_code:
-	;MOV AH, 02H
-	.byte 0xB4, 0x02
-	;MOV DL, 48H
-	.byte 0xB2, 0x48
+	;MOV DX, 0BH
+	.byte 0xBA, 0x0B, 0x00
+	;MOV AH, 09H
+	.byte 0xB4, 0x09
 	;INT 21H
 	.byte 0xCD, 0x21
-	;MOV AL, 42H
-	.byte 0xB0, 0x42
 	;MOV AH, 4CH
 	.byte 0xB4, 0x4C
 	;INT 21H
 	.byte 0xCD, 0x21
+
+d_string:
+	.ascii "Hello World!$"

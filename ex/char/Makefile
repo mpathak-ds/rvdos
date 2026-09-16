@@ -1,4 +1,4 @@
 all:
-	nasm -f bin main.asm -o char.com
+	nasm -f bin main.asm -o testchar.com
 clean:
-	rm -f char.com
+	rm -f testchar.com

@@ -2,5 +2,8 @@ ORG 100H
 
 start:
 	MOV AH, 02H
-	MOV DL, 'A'
+	MOV DL, 48H ;H
+	INT 21H
+	MOV AL, 42H
+	MOV AH, 4CH
 	INT 21H
