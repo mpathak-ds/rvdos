@@ -19,4 +19,4 @@ CmdHelp:
 	ret
 
 .data
-help_str: .string "help, ver, echo\n"
+help_str: .string "help, ver, echo, peek, poke\n"

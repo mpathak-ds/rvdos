@@ -148,12 +148,16 @@ cmd_table:
 	.word cmd_name_help, CmdHelp
 	.word cmd_name_echo, CmdEcho
 	.word cmd_name_emu, EmuStartup
+	.word cmd_name_peek, CmdPeek
+	.word cmd_name_poke, CmdPoke
 	.word 0 ;end of table
 
 cmd_name_ver: .string "ver"
 cmd_name_help: .string "help"
 cmd_name_echo: .string "echo"
 cmd_name_emu: .string "doel86"
+cmd_name_peek: .string "peek"
+cmd_name_poke: .string "poke"
 
 .bss
 .align 4
