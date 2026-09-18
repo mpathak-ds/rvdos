@@ -10,6 +10,8 @@
 .global MainStartup
 .global MainHandleTrap
 
+.include "inc/priv/fs.inc"
+
 ;
 ; FUNCTION DESCRIPTION
 ;
@@ -25,9 +27,25 @@ MainStartup:
 	;Initialize flash
 	call FpecInitialize
 
-	;Initialize filesystem
+	;Check if TFFS is already present
+	li t0, FS_MAGIC_ADDR
+	lw t1, 0(t0)
+	li t2, FS_MAGIC_VAL
+	beq t1, t2, .skip_format_fs
+
+	;Initialize filesystem since not present
 	call FsFormatAll
+
+.skip_format_fs:
+	la a0, _test_file_name
+	li a1, 1
+	call FsCreateFile
+	la a1, _hex_file_buf
+	call HexToStr
+	mv a0, a1
+	call WriteString
 	
+
 	;Launch command
 	call CmdInit
 
@@ -81,3 +99,7 @@ MainHandleTrap:
 	;return val
 	sw a0, 16(s0)
 	j .trap_exit
+
+.data
+_test_file_name: .string "TEST"
+_hex_file_buf: .string "0x0000000"
