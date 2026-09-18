@@ -37,6 +37,7 @@ MainStartup:
 	call FsFormatAll
 
 .skip_format_fs:
+	;test
 	la a0, _test_file_name
 	li a1, 1
 	call FsCreateFile
@@ -44,7 +45,13 @@ MainStartup:
 	call HexToStr
 	mv a0, a1
 	call WriteString
-	
+	li a0, '\n'
+	call WriteCharacter
+
+	la a0, _test_file_name
+	la a1, _fs_struct
+	call FsOpenFile
+	beqz a0, main_loop
 
 	;Launch command
 	call CmdInit
@@ -103,3 +110,7 @@ MainHandleTrap:
 .data
 _test_file_name: .string "TEST"
 _hex_file_buf: .string "0x0000000"
+
+.bss
+.align 2
+_fs_struct: .space 12
