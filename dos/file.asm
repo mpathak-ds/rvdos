@@ -131,7 +131,7 @@ FsPageScratch:
 ;simply put, it is an array of 16 byte entries, ordered as below:
 ;
 ;U8 STATE
-;CHAR NAME[7]
+;CHAR NAME[FS_FILENAME_LEN]
 ;U16 START_SECTOR
 ;U16 SECTOR_SPAN
 ;U8 RESERVED
