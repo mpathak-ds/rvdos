@@ -51,11 +51,11 @@ rv32_make:
 	riscv64-unknown-elf-size boot.elf
 
 rv32_debug: rv32_make
-	cp boot.elf ../qemu/build/boot.elf && cd ../qemu/build/ && ./qemu-system-riscv32 -M ch32v307 \
+	cp boot.elf ../qemu/build/boot.elf && cd ../qemu/build/ && ./qemu-system-riscv32 -M ch32v307,flash-image=../../rvdos/osimg.img \
 	-cpu rv32,i=true,m=true,a=true,f=true,c=true,pmp=true -kernel boot.elf -serial stdio -s -S
 
 rv32_run:
-	cp boot.elf ../qemu/build/boot.elf && cd ../qemu/build/ && ./qemu-system-riscv32 -M ch32v307 \
+	cp boot.elf ../qemu/build/boot.elf && cd ../qemu/build/ && ./qemu-system-riscv32 -M ch32v307,flash-image=../../rvdos/osimg.img \
 	-cpu rv32,i=true,m=true,a=true,f=true,c=true,pmp=true -kernel boot.elf -nographic && cd ../../rvdos
 
 rv32_clean:
