@@ -33,14 +33,13 @@
 #define FS_MAX_PAYLOAD_LEN  254
 
 unsigned long gProgVersionMajor = 1;
-unsigned long gProgVersionMinor = 1;
-unsigned long gProgVersionBuild = 0;
-
+unsigned long gProgVersionMinor = 2;
+unsigned long gProgVersionBuild = 1;
 
 static uint16_t read_le16(const unsigned char *p)
 {
 	return (uint16_t)p[0] |
-		   ((uint16_t)p[1] << 8);
+	       ((uint16_t)p[1] << 8);
 }
 
 static void write_le16(unsigned char *p, uint16_t val)
@@ -255,7 +254,7 @@ static void get_file_range(
 static uint16_t find_free_sector_run(FILE *fp, uint64_t image_size, uint16_t sectors_needed)
 {
 	uint64_t total_sectors = (image_size - IMG_START_ADDR) / FS_SECTOR_SIZE;
-	uint16_t start_sector = 1;
+	uint16_t start_sector = 1; // Sector 0 is reserved for directory table
 
 	while (start_sector + sectors_needed <= total_sectors) {
 		int overlap = 0;
@@ -289,7 +288,6 @@ static uint16_t find_free_sector_run(FILE *fp, uint64_t image_size, uint16_t sec
 	return 0;
 }
 
-//create cmd
 static int create_file_entry(
 	FILE *fp,
 	const char *filename,
@@ -304,7 +302,6 @@ static int create_file_entry(
 		return -1;
 	}
 
-	//check if file exists n find free slot
 	for (unsigned int i = 0; i < FS_DIRENT_NUM; ++i) {
 		if (read_dir_entry(fp, i, entry) != 0)
 			return -1;
@@ -331,7 +328,6 @@ static int create_file_entry(
 		return -1;
 	}
 
-	//build ent
 	memset(entry, 0, FS_DIRENT_SIZE);
 	entry[0] = FS_STATE_USED;
 
@@ -351,6 +347,72 @@ static int create_file_entry(
 	}
 
 	printf("Created %s (start_sector=%u, sector_span=%u)\n", filename, start_sector, sector_span);
+	return 0;
+}
+
+static int delete_file_entry(
+	FILE *fp,
+	const char *filename,
+	uint64_t image_size)
+{
+	unsigned char entry[FS_DIRENT_SIZE];
+	unsigned int entry_index;
+	uint64_t file_start, file_end;
+
+	if (find_file(fp, filename, entry, &entry_index) != 0) {
+		fprintf(stderr, "MKTFFS: file '%s' not found in image\n", filename);
+		return -1;
+	}
+
+	uint16_t start_sector = read_le16(&entry[FS_START_SECTOR_OFF]);
+	uint16_t sector_span  = read_le16(&entry[FS_SECTOR_SPAN_OFF]);
+
+	if (start_sector == 0) {
+		fprintf(stderr, "MKTFFS Error: Refusing to delete entry with start_sector=0 (Directory Sector)\n");
+		return -1;
+	}
+
+	if (sector_span == 0) {
+		fprintf(stderr, "MKTFFS Error: Cannot delete file with 0 sector span\n");
+		return -1;
+	}
+
+	get_file_range(entry, &file_start, &file_end);
+
+	uint64_t min_allowed_addr = IMG_START_ADDR + FS_SECTOR_SIZE;
+
+	if (file_start < min_allowed_addr || file_end > image_size || file_end <= file_start) {
+		fprintf(stderr, "MKTFFS Error: Invalid file range [0x%llX - 0x%llX] for image size 0x%llX\n",
+		        (unsigned long long)file_start,
+		        (unsigned long long)file_end,
+		        (unsigned long long)image_size);
+		return -1;
+	}
+
+	unsigned char ff_buf[FS_SECTOR_SIZE];
+	memset(ff_buf, FS_STATE_FREE, sizeof(ff_buf));
+
+	if (fseeko(fp, (off_t)file_start, SEEK_SET) != 0) {
+		fprintf(stderr, "MKTFFS: failed to seek to file data start (0x%llX)\n", (unsigned long long)file_start);
+		return -1;
+	}
+
+	for (uint64_t cursor = file_start; cursor < file_end; cursor += FS_SECTOR_SIZE) {
+		if (fwrite(ff_buf, 1, FS_SECTOR_SIZE, fp) != FS_SECTOR_SIZE) {
+			fprintf(stderr, "MKTFFS: failed to erase sector at offset 0x%llX\n", (unsigned long long)cursor);
+			return -1;
+		}
+	}
+
+	memset(entry, FS_STATE_FREE, FS_DIRENT_SIZE);
+
+	if (write_dir_entry(fp, entry_index, entry) != 0) {
+		fprintf(stderr, "MKTFFS: failed to update directory entry for deletion\n");
+		return -1;
+	}
+
+	printf("Successfully deleted '%s' (erased data sectors %u to %u)\n",
+	       filename, start_sector, start_sector + sector_span - 1);
 	return 0;
 }
 
@@ -466,8 +528,8 @@ static int list_files(FILE *fp, uint64_t image_size)
 
 		printf("[%02u] ", i);
 		print_filename(entry);
-		printf("  start=%u  sectors=%u  size=%llu  records=%llu\n",
-			   start_sector, sector_span, (unsigned long long)logical_size, (unsigned long long)record_count);
+		printf("   start=%u  sectors=%u  size=%llu  records=%llu\n",
+		       start_sector, sector_span, (unsigned long long)logical_size, (unsigned long long)record_count);
 
 		found_files++;
 	}
@@ -532,8 +594,9 @@ static void usage(const char *program)
 		"  %s IMAGE.IMG LIST\n"
 		"  %s IMAGE.IMG READ FILE\n"
 		"  %s IMAGE.IMG CREATE FILE SECTORS\n"
-		"  %s IMAGE.IMG WRITE FILE LOCAL_PATH\n",
-		program, program, program, program, program
+		"  %s IMAGE.IMG WRITE FILE LOCAL_PATH\n"
+		"  %s IMAGE.IMG DELETE FILE\n",
+		program, program, program, program, program, program
 	);
 }
 
@@ -555,7 +618,10 @@ int main(int argc, char **argv)
 	}
 
 	const char *cmd = (argc >= 3) ? argv[2] : "LIST";
-	int is_write_op = (strcasecmp(cmd, "WRITE") == 0 || strcasecmp(cmd, "CREATE") == 0);
+	int is_write_op = (strcasecmp(cmd, "WRITE") == 0 ||
+	                   strcasecmp(cmd, "CREATE") == 0 ||
+	                   strcasecmp(cmd, "DELETE") == 0 ||
+	                   strcasecmp(cmd, "DEL") == 0);
 
 	fp = fopen(argv[1], is_write_op ? "rb+" : "rb");
 
@@ -606,6 +672,12 @@ int main(int argc, char **argv)
 			usage(argv[0]);
 		} else {
 			result = write_file_contents(fp, argv[3], argv[4], image_size);
+		}
+	} else if (strcasecmp(cmd, "DELETE") == 0 || strcasecmp(cmd, "DEL") == 0) {
+		if (argc != 4) {
+			usage(argv[0]);
+		} else {
+			result = delete_file_entry(fp, argv[3], image_size);
 		}
 	} else {
 		fprintf(stderr, "MKTFFS: unknown command '%s'\n", cmd);

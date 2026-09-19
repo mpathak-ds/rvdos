@@ -9,11 +9,14 @@
 .section .text
 .global CmdHelp
 
+.equ TEST_PAYLOAD_LEN, 22
+
 CmdHelp:
 	addi sp, sp, -4
 	sw ra, 0(sp)
 	la a0, help_str
 	call WriteString
+	
 	lw ra, 0(sp)
 	addi sp, sp, 4
 	ret

@@ -9,6 +9,7 @@
 .section .text
 .global EmuStartup
 .global .emu_fetch_byte
+.global EmuCleanExit
 
 ;
 ; FUNCTION DESCRIPTION
@@ -36,12 +37,28 @@ EmuStartup:
 	;s5=DS
 	;
 
+	la t0, _d_saved_ra
+	sw ra, 0(t0)
+
 	;CS
 	li s3, 0
+	;open file
+	la a1, _d_fs_struct
+	;a0 has filename we want already
+	call FsOpenFile
+	beqz a0, .emu_fail_err
+
+	la a0, _d_fs_struct
+	la a1, _d_com_code
+	li a2, 29
+	call FsReadFile
 	;guest base
-	la s2, d_test_code
+	la s2, _d_com_code
+	addi s2, s2, -256
+	;DOS progs expect to be at ORG 0x100
+	li s1, 0x100
 	;IP
-	li s1, 0
+	;li s1, 0
 	;DS
 	li s5, 0
 
@@ -89,8 +106,12 @@ EmuStartup:
 	beq t2, t1, .emu_handle_int
 
 .emu_exit:
-	;hang for gdb
-	j .emu_exit
+	j EmuCleanExit
+
+EmuCleanExit:
+	la t0, _d_saved_ra
+	lw ra, 0(t0)
+	ret
 
 .emu_handle_movalimm8:
 	;MOV AL, imm8
@@ -235,6 +256,13 @@ EmuStartup:
 	
 	j .emu_fetch_byte
 
+.emu_fail_err:
+	la a0, d_fail_err_msg
+	call WriteString
+	li a0, '\n'
+	call WriteCharacter
+	j EmuCleanExit
+
 .data
 .align 4
 ;x86 instructions test
@@ -252,3 +280,12 @@ d_test_code:
 
 d_string:
 	.ascii "Hello World!$"
+
+d_test_file: .string "DOEL86.COM"
+d_fail_err_msg: .string "Program not found."
+
+.bss
+.align 4
+_d_com_code: .space 29
+_d_fs_struct: .space 16
+_d_saved_ra:  .space 4

@@ -29,7 +29,7 @@ EmuIntExit:
 	li a0, 0
 	li a1, '\n'
 	ecall
-	ret
+	j EmuCleanExit
 
 ;
 ;AH=09H
@@ -39,8 +39,15 @@ EmuIntPstring:
 	slli t5, s5, 4
 	add t5, t5, s4
 	add t5, t5, s2
+
+	addi sp, sp, -8
+	sw s6, 4(sp)
+	sw ra, 0(sp)
+
+	mv s6, t5
+
 .pstring_loop:
-	lbu a1, 0(t5)
+	lbu a1, 0(s6)
 	;DOS only terminates off dollar sign
 	li t6, '$'
 	beq a1, t6, .pstring_done
@@ -49,7 +56,11 @@ EmuIntPstring:
 	;a1 already has char
 	ecall
 
-	addi t5, t5, 1
+	addi s6, s6, 1
 	j .pstring_loop
+
 .pstring_done:
+	lw ra, 0(sp)
+	lw s6, 4(sp)
+	addi sp, sp, 8
 	j .emu_fetch_byte

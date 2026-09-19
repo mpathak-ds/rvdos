@@ -8,7 +8,7 @@ The goal of RV-DOS is to provide a neat, familiar and usable interface like othe
 the **WCH CH32V307** chip. It also provides not just the user interface but also the developer interface to mask hardware via abstraction, giving
 an easy API to program for.
 
-Another (upcoming) goal is to provide fast real x86 MS-DOS compatibility via optimized emulation.
+Another goal is to provide fast real x86 MS-DOS compatibility via optimized emulation.
 
 # Building
 

@@ -12,8 +12,6 @@
 
 .include "inc/priv/fs.inc"
 
-.equ TEST_PAYLOAD_LEN, 22
-
 ;
 ; FUNCTION DESCRIPTION
 ;
@@ -35,29 +33,15 @@ MainStartup:
 	li t2, FS_MAGIC_VAL
 	beq t1, t2, .skip_format_fs
 
+	la a0, _format_msg
+	call WriteString
+	call UartReadCharB
+
+	la a0, _first_boot
+	call WriteString
+
 	;Initialize filesystem since not present
 	call FsFormatAll
-
-	;
-	;TEMPORARY FILESYSTEM TEST
-	;
-
-	;create
-	la a0, _test_file_name
-	li a1, 1
-	call FsCreateFile
-
-	;open
-	la a0, _test_file_name
-	la a1, _fs_struct
-	call FsOpenFile
-	beqz a0, main_loop
-
-	;write
-	la a0, _fs_struct
-	la a1, _test_payload
-	li a2, TEST_PAYLOAD_LEN
-	call FsWriteFile
 
 .skip_format_fs:
 	;Launch command
@@ -115,9 +99,14 @@ MainHandleTrap:
 	j .trap_exit
 
 .data
-_test_file_name: .string "TEST.TXT"
-_test_payload: .string "THIS IS A TEST FILE!"
-
-.bss
-.align 2
-_fs_struct: .space 16
+.align 4
+.ifdef LANG_GER
+    .include "inc/lang/ger.inc"
+.else
+    .ifdef LANG_FRE
+        .include "inc/lang/fre.inc"
+    .else
+    	;english US is default
+        .include "inc/lang/eng.inc"
+    .endif
+.endif

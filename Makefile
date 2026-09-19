@@ -12,8 +12,31 @@
 # After this setup, it should work. If you have any problems, open an issue
 # in this repository.
 #
+# --- QEMU BUILD ONLY SECTION ---
+# For real hardware, skip to the next section.
+#
+# In order to start building, simply go ahead and run just:
+#
+# $ make
+#
+# first. It will run you through a quick setup. After that, quit
+# QEMU. Now, to install the sample DOS binaries, run:
+#
+# $ make cfg
+#
+# You can now run make again with a full installation. To clean
+# your installation, just delete osimg.img at the root.
+#
+# --- CH32V307 BUILD SECTION ---
+#
+# TODO add proper after full pipeline
+#
 
 .SILENT:
+
+#available: GER, FRE, ENG
+DOSLANG ?= ENG
+
 all: rv32_make rv32_run rv32_clean
 
 rv32_make:
@@ -39,7 +62,7 @@ rv32_make:
 	sed 's/;.*$$//' doel/eint.asm > preproc/eint.s
 
 	# Compile
-	riscv64-unknown-elf-gcc -march=rv32imafc -mabi=ilp32f -nostdlib -I../inc -T link.ld \
+	riscv64-unknown-elf-gcc -march=rv32imafc -mabi=ilp32f -nostdlib -Wa,-defsym,LANG_$(DOSLANG)=1 -I. -I../inc -T link.ld \
 	preproc/fwboot.s preproc/main.s preproc/cmd.s preproc/api.s preproc/str.s preproc/uart.s preproc/ver.s \
 	preproc/help.s preproc/echo.s preproc/emain.s preproc/eint.s preproc/fpec.s \
 	preproc/mem.s preproc/file.s preproc/read.s -o boot.elf
@@ -49,6 +72,12 @@ rv32_make:
 
 	# Tells us the actual .text size of our program.
 	riscv64-unknown-elf-size boot.elf
+
+cfg:
+	cd ex/hello && make && cd ../../
+	cd tools/fs && make && (./mktffs ../../osimg.img DELETE HELLO.COM || true) && ./mktffs ../../osimg.img CREATE HELLO.COM 1 \
+	&& ./mktffs ../../osimg.img WRITE HELLO.COM ../../ex/hello/doel86.com && make clean && cd ../../
+	cd ex/hello && make clean && cd ../../
 
 rv32_debug: rv32_make
 	cp boot.elf ../qemu/build/boot.elf && cd ../qemu/build/ && ./qemu-system-riscv32 -M ch32v307,flash-image=../../rvdos/osimg.img \
