@@ -59,16 +59,6 @@ MainStartup:
 	li a2, TEST_PAYLOAD_LEN
 	call FsWriteFile
 
-	;read
-	la a0, _fs_struct
-	la a1, _test_buf_read
-	li a2, TEST_PAYLOAD_LEN
-	call FsReadFile
-	mv a0, a1
-	call WriteString
-	li a0, '\n'
-	call WriteCharacter
-
 .skip_format_fs:
 	;Launch command
 	call CmdInit
@@ -131,4 +121,3 @@ _test_payload: .string "THIS IS A TEST FILE!"
 .bss
 .align 2
 _fs_struct: .space 16
-_test_buf_read: .space 22
