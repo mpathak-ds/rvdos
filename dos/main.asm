@@ -106,7 +106,19 @@ MainHandleTrap:
     .ifdef LANG_FRE
         .include "inc/lang/fre.inc"
     .else
-    	;english US is default
-        .include "inc/lang/eng.inc"
+        .ifdef LANG_JPN
+            .include "inc/lang/jpn.inc"
+        .else
+            .ifdef LANG_NED
+                .include "inc/lang/ned.inc"
+			.else
+				.ifdef LANG_RUS
+					.include "inc/lang/rus.inc"
+	            .else
+	                ;english US is default
+	                .include "inc/lang/eng.inc"
+	            .endif
+			.endif
+        .endif
     .endif
 .endif

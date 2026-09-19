@@ -34,7 +34,7 @@
 
 .SILENT:
 
-#available: GER, FRE, ENG
+#available: GER, FRE, ENG, NED, JPN, RUS
 DOSLANG ?= ENG
 
 all: rv32_make rv32_run rv32_clean
