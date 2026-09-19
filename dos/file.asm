@@ -10,6 +10,8 @@
 .global FsFormatAll
 .global FsCreateFile
 .global FsOpenFile
+.global FsWriteFile
+.global FsReadFile
 .global FsSafeWriteStorage
 
 .include "inc/priv/fs.inc"
@@ -481,6 +483,7 @@ FsOpenFile:
 	;U32 BASE_ADDRESS
 	;U32 CURSOR_ADDRESS
 	;U32 END_ADDRESS
+	;U32 READ_CURSOR
 	;
 
 	addi sp, sp, -32
@@ -532,6 +535,7 @@ walk_done:
 	sw s2, 0(s0)
 	sw s4, 4(s0)
 	sw s3, 8(s0)
+	sw s2, 12(s0)
 
 	mv a0, s1
 	j of_done
@@ -540,6 +544,181 @@ of_fail:
 	li a0, 0
 
 of_done:
+	lw s4, 8(sp)
+	lw s3, 12(sp)
+	lw s2, 16(sp)
+	lw s1, 20(sp)
+	lw s0, 24(sp)
+	lw ra, 28(sp)
+	addi sp, sp, 32
+	ret
+
+;
+; FUNCTION DESCRIPTION
+;
+; This function writes to a file by name and appending.
+;
+; FUNCTION PARAMETERS
+;
+; a0 - Pointer to FS_FILE structure.
+; a1 - Pointer to payload.
+; a2 - Payload length in BYTES.
+;
+; FUNCTION RETURN
+;
+; a0 - 0 on success, -1 if too large.
+;
+FsWriteFile:
+	addi sp, sp, -288
+	sw ra, 276(sp)
+	sw s0, 272(sp)
+	sw s1, 268(sp)
+	sw s2, 264(sp)
+	sw s3, 260(sp)
+	sw s4, 256(sp)
+	;sp+0 .. sp+255 doubles as the rec build buffer
+
+	mv s0, a0
+	mv s1, a1
+	mv s2, a2
+
+	li t0, FS_MAX_PAYLOAD_LEN
+	bgt s2, t0, wf_fail
+
+	;PADDED SIZE =align4(2 + len)
+	addi t1, s2, FS_REC_HDR_SIZE
+	addi t1, t1, 3
+	andi t1, t1, -4
+	mv s3, t1
+
+	lw t2, 4(s0)
+	lw t3, 8(s0)
+	mv s4, t2
+
+	add t4, t2, s3
+	;fat file!
+	bgt t4, t3, wf_fail
+
+	sh s2, 0(sp)
+
+	mv t5, s1
+	li t6, 0
+copy_loop:
+	bge t6, s2, pad_start
+	lbu t0, 0(t5)
+	addi t1, sp, FS_REC_HDR_SIZE
+	add t1, t1, t6
+	sb t0, 0(t1)
+	addi t5, t5, 1
+	addi t6, t6, 1
+	j copy_loop
+
+pad_start:
+	addi t0, s2, FS_REC_HDR_SIZE
+pad_loop:
+	bge t0, s3, do_write
+	add t1, sp, t0
+	sb zero, 0(t1)
+	addi t0, t0, 1
+	j pad_loop
+
+do_write:
+	mv a0, s4
+	mv a1, sp
+	mv a2, s3
+	call FsSafeWriteStorage
+	bnez a0, wf_fail
+
+	add t2, s4, s3
+	sw t2, 4(s0)
+
+	li a0, 0
+	j wf_done
+
+wf_fail:
+	li a0, -1
+
+wf_done:
+	lw s4, 256(sp)
+	lw s3, 260(sp)
+	lw s2, 264(sp)
+	lw s1, 268(sp)
+	lw s0, 272(sp)
+	lw ra, 276(sp)
+	addi sp, sp, 288
+	ret
+
+;
+; FUNCTION DESCRIPTION
+;
+; This function reads the next record from a file using the
+; FS_FILE cursor.
+;
+; FUNCTION PARAMETERS
+;
+; a0 - Pointer to FS_FILE structure.
+; a1 - Pointer to destination buffer.
+; a2 - Destination buffer capacity in BYTES.
+;
+; FUNCTION RETURN
+;
+; a0 - Number of bytes copied on success, 0 if at end of file, -1 if next record larger
+; than supplied buffer. Note that on -1, cursor is not advanced and caller may retry
+; with a larger buffer.
+;
+FsReadFile:
+	addi sp, sp, -32
+	sw ra, 28(sp)
+	sw s0, 24(sp)
+	sw s1, 20(sp)
+	sw s2, 16(sp)
+	sw s3, 12(sp)
+	sw s4, 8(sp)
+
+	mv s0, a0
+	mv s1, a1
+	mv s2, a2
+
+	lw s3, 12(s0)
+	lw t0, 4(s0)
+
+	bge s3, t0, rf_eof
+
+	lhu s4, 0(s3)
+	li t2, 0xFFFF
+	beq s4, t2, rf_eof
+
+	bgt s4, s2, rf_toobig
+
+	addi t3, s3, FS_REC_HDR_SIZE
+	mv t4, s1
+	li t5, 0
+rd_copy_loop:
+	bge t5, s4, rd_copy_done
+	lbu t6, 0(t3)
+	sb t6, 0(t4)
+	addi t3, t3, 1
+	addi t4, t4, 1
+	addi t5, t5, 1
+	j rd_copy_loop
+rd_copy_done:
+	addi t1, s4, FS_REC_HDR_SIZE
+	addi t1, t1, 3
+	andi t1, t1, -4
+	add t2, s3, t1
+	sw t2, 12(s0)
+
+	mv a0, s4
+	j .rf_done
+
+rf_eof:
+	li a0, 0
+	j .rf_done
+
+rf_toobig:
+	li a0, -1
+
+.rf_done:
 	lw s4, 8(sp)
 	lw s3, 12(sp)
 	lw s2, 16(sp)

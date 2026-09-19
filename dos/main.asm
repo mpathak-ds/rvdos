@@ -12,6 +12,8 @@
 
 .include "inc/priv/fs.inc"
 
+.equ TEST_PAYLOAD_LEN, 24
+
 ;
 ; FUNCTION DESCRIPTION
 ;
@@ -36,23 +38,38 @@ MainStartup:
 	;Initialize filesystem since not present
 	call FsFormatAll
 
-.skip_format_fs:
-	;test
+	;
+	;TEMPORARY FILESYSTEM TEST
+	;
+
+	;create
 	la a0, _test_file_name
 	li a1, 1
 	call FsCreateFile
-	la a1, _hex_file_buf
-	call HexToStr
-	mv a0, a1
-	call WriteString
-	li a0, '\n'
-	call WriteCharacter
 
+	;open
 	la a0, _test_file_name
 	la a1, _fs_struct
 	call FsOpenFile
 	beqz a0, main_loop
 
+	;write
+	la a0, _fs_struct
+	la a1, _test_payload
+	li a2, TEST_PAYLOAD_LEN
+	call FsWriteFile
+
+	;read
+	la a0, _fs_struct
+	la a1, _test_buf_read
+	li a2, TEST_PAYLOAD_LEN
+	call FsReadFile
+	mv a0, a1
+	call WriteString
+	li a0, '\n'
+	call WriteCharacter
+
+.skip_format_fs:
 	;Launch command
 	call CmdInit
 
@@ -109,8 +126,9 @@ MainHandleTrap:
 
 .data
 _test_file_name: .string "TEST"
-_hex_file_buf: .string "0x0000000"
+_test_payload: .string "THIS IS A TEST FILE!"
 
 .bss
 .align 2
-_fs_struct: .space 12
+_fs_struct: .space 16
+_test_buf_read: .space 24
