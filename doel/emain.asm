@@ -50,7 +50,7 @@ EmuStartup:
 
 	la a0, _d_fs_struct
 	la a1, _d_com_code
-	li a2, 29
+	li a2, 64
 	call FsReadFile
 	;guest base
 	la s2, _d_com_code
@@ -105,8 +105,30 @@ EmuStartup:
 	li t1, 0xCD
 	beq t2, t1, .emu_handle_int
 
-.emu_exit:
-	j EmuCleanExit
+	;unknown
+	;save to a3 incase temp gets clobbered
+	mv a3, t2
+
+.emu_unimpl_op:
+	la a0, d_fail_op_msg
+	call WriteString
+
+	;convert to str
+	;format: Unknown OPCODE: [code] at IP:[address]
+	mv a0, a3
+	la a1, d_hex_buf
+	call HexToStr
+	mv a0, a1
+	call WriteString
+	la a0, d_fail_op_msg2
+	call WriteString
+	mv a0, s1
+	la a1, d_hex_buf
+	call HexToStr
+	call WriteString
+
+	li a0, '\n'
+	call WriteCharacter
 
 EmuCleanExit:
 	la t0, _d_saved_ra
@@ -283,6 +305,9 @@ d_string:
 
 d_test_file: .string "DOEL86.COM"
 d_fail_err_msg: .string "Program not found."
+d_fail_op_msg: .string "\nUnimplemented OPCODE: "
+d_fail_op_msg2: .string " at IP:"
+d_hex_buf: .string "0x0000000"
 
 .bss
 .align 4
