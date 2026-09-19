@@ -12,7 +12,7 @@
 
 .include "inc/priv/fs.inc"
 
-.equ TEST_PAYLOAD_LEN, 24
+.equ TEST_PAYLOAD_LEN, 22
 
 ;
 ; FUNCTION DESCRIPTION
@@ -125,10 +125,10 @@ MainHandleTrap:
 	j .trap_exit
 
 .data
-_test_file_name: .string "TEST"
+_test_file_name: .string "TEST.TXT"
 _test_payload: .string "THIS IS A TEST FILE!"
 
 .bss
 .align 2
 _fs_struct: .space 16
-_test_buf_read: .space 24
+_test_buf_read: .space 22

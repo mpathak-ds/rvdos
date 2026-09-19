@@ -1,7 +1,7 @@
 #adjustable based on available storage
 .equ FLASH_BEGIN_FS, 0x08010000
 .equ FLASH_SECTOR_SIZE, 0x100 #256 bytes
-.equ FS_MAX_FILE_NAME_LEN, 7
+.equ FS_MAX_FILE_NAME_LEN, 7 #retired
 .equ FS_MAGIC_ADDR, FLASH_BEGIN_FS + FLASH_SECTOR_SIZE - 4
 .equ FS_MAGIC_VAL, 0x53464654 #TFFS little endian
 .equ FS_FLASH_SIZE, 0x3E800 #256kb
@@ -9,3 +9,6 @@
 .equ FS_ERASE_PAGE_SIZE, 0x400 #1024 bytes
 .equ FS_MAX_PAYLOAD_LEN, 252
 .equ FS_REC_HDR_SIZE, 2
+.equ FS_NAME_LEN, 8
+.equ FS_EXT_LEN, 3
+.equ FS_FULLNAME_LEN, 11

@@ -191,6 +191,78 @@ FsFormatAll:
 	addi sp, sp, 16
 	ret
 
+FsNormalizeName:
+	li t0, 0
+zero_loop:
+	li t1, FS_FULLNAME_LEN
+	bge t0, t1, zero_done
+	add t2, a1, t0
+	sb zero, 0(t2)
+	addi t0, t0, 1
+	j zero_loop
+zero_done:
+
+	mv t3, a0
+	li t4, 0
+
+name_copy:
+	li t5, FS_NAME_LEN
+	bge t4, t5, skip_to_dot
+
+	lbu t6, 0(t3)
+	beqz t6, nm_done
+	li t0, '.'
+	beq t6, t0, found_dot
+
+	li t0, 'a'
+	blt t6, t0, nm_store
+	li t0, 'z'
+	bgt t6, t0, nm_store
+	addi t6, t6, -32
+
+nm_store:
+	add t0, a1, t4
+	sb t6, 0(t0)
+	addi t3, t3, 1
+	addi t4, t4, 1
+	j name_copy
+
+skip_to_dot:
+	lbu t6, 0(t3)
+	beqz t6, nm_done
+	li t0, '.'
+	beq t6, t0, found_dot
+	addi t3, t3, 1
+	j skip_to_dot
+
+found_dot:
+	addi t3, t3, 1
+	li t4, 0
+
+ext_copy:
+	li t5, FS_EXT_LEN
+	bge t4, t5, nm_done
+
+	lbu t6, 0(t3)
+	beqz t6, nm_done
+
+	li t0, 'a'
+	blt t6, t0, ext_store
+	li t0, 'z'
+	bgt t6, t0, ext_store
+	addi t6, t6, -32
+
+ext_store:
+	addi t0, a1, FS_NAME_LEN
+	add t0, t0, t4
+	sb t6, 0(t0)
+	addi t3, t3, 1
+	addi t4, t4, 1
+	j ext_copy
+
+nm_done:
+	ret
+
 ;
 ; FUNCTION DESCRIPTION
 ;
@@ -268,8 +340,8 @@ scan_loop:
 	beq t3, t4, next_ent
 
 	;occupied
-	lhu t5, 8(s2)
-	lhu t6, 10(s2)
+	lhu t5, 12(s2)
+	lhu t6, 14(s2)
 	add t6, t5, t6
 
 	add t0, s0, s1
@@ -342,38 +414,15 @@ FsCreateFile:
 	li t0, FS_STATE_USED
 	sb t0, 0(sp)
 
-	mv t1, s0
-	li t2, 0
-copy_name:
-	li t3, FS_MAX_FILE_NAME_LEN
-	bge t2, t3, name_pad
-	lbu t4, 0(t1)
-	beqz t4, name_pad
-	addi t5, sp, 1
-	add t5, t5, t2
-	sb t4, 0(t5)
-	addi t1, t1, 1
-	addi t2, t2, 1
-	j copy_name
-
-name_pad:
-	li t3, FS_MAX_FILE_NAME_LEN
-	bge t2, t3, name_done
-	addi t5, sp, 1
-	add t5, t5, t2
-	sb zero, 0(t5)
-	addi t2, t2, 1
-	j name_pad
+	mv a0, s0
+	addi a1, sp, 1
+	call FsNormalizeName
 
 name_done:
-	addi t5, sp, 8
-	;START_SECTOR
+	addi t5, sp, 12
 	sh s3, 0(t5)
-	addi t5, sp, 10
-	;SECTOR_SPAN
+	addi t5, sp, 14
 	sh s1, 0(t5)
-	;RESERVED
-	sb zero, 12(sp)
 
 	mv a0, s2
 	mv a1, sp
@@ -396,52 +445,41 @@ cf_done:
 	ret
 
 FsDirFindByName:
-	addi sp, sp, -16
-	sw s0, 12(sp)
-	sw s1, 8(sp)
-	sw s2, 4(sp)
+	addi sp, sp, -32
+	sw ra, 28(sp)
+	sw s0, 24(sp)
+	sw s1, 20(sp)
+	sw s2, 16(sp)
 
 	mv s0, a0
+	addi a1, sp, 0
+	call FsNormalizeName
+
 	li s1, FS_DIR_BASE
 	li s2, FS_DIRENT_NUM
 
 entry_loop:
 	beqz s2, fbn_fail
 
-	;state
 	lbu t0, 0(s1)
 	li t1, FS_STATE_FREE
 	beq t0, t1, fbn_next
 
-	mv t2, s0
-	addi t3, s1, 1
-	li t4, 0
-
+	li t2, 0
 cmp_loop:
-	li t5, FS_MAX_FILE_NAME_LEN
-	bge t4, t5, fbn_match
+	li t3, FS_FULLNAME_LEN
+	bge t2, t3, fbn_match
 
-	lbu t6, 0(t3)
-	lbu a2, 0(t2)
+	addi t4, s1, 1
+	add t4, t4, t2
+	lbu t5, 0(t4)
 
-	beqz a2, cmp_end_input
-	bne t6, a2, fbn_next
+	add t6, sp, t2
+	lbu a2, 0(t6)
 
+	bne t5, a2, fbn_next
 	addi t2, t2, 1
-	addi t3, t3, 1
-	addi t4, t4, 1
 	j cmp_loop
-
-cmp_end_input:
-	li t5, FS_MAX_FILE_NAME_LEN
-	bge t4, t5, fbn_match
-
-	lbu t6, 0(t3)
-	bnez t6, fbn_next
-
-	addi t3, t3, 1
-	addi t4, t4, 1
-	j cmp_end_input
 
 fbn_match:
 	mv a0, s1
@@ -456,10 +494,11 @@ fbn_fail:
 	li a0, 0
 
 fbn_done:
-	lw s2, 4(sp)
-	lw s1, 8(sp)
-	lw s0, 12(sp)
-	addi sp, sp, 16
+	lw s2, 16(sp)
+	lw s1, 20(sp)
+	lw s0, 24(sp)
+	lw ra, 28(sp)
+	addi sp, sp, 32
 	ret
 
 ;
@@ -501,13 +540,13 @@ FsOpenFile:
 	mv s1, a0
 
 	;BASE_ADDRESS=FLASH_BEGIN_FS+START_SECTOR*FLASH_SECTOR_SIZE
-	lhu t0, 8(s1)
+	lhu t0, 12(s1)
 	slli t0, t0, 8
 	li t1, FLASH_BEGIN_FS
 	add s2, t1, t0
 
 	;END_ADDRESS=BASE_ADDRESS+SECTOR_SPAN*FLASH_SECTOR_SIZE
-	lhu t0, 10(s1)
+	lhu t0, 14(s1)
 	slli t0, t0, 8
 	add s3, s2, t0
 
