@@ -57,6 +57,7 @@ rv32_make:
 	sed 's/;.*$$//' dos/echo.asm > preproc/echo.s
 	sed 's/;.*$$//' dos/memac.asm > preproc/mem.s
 	sed 's/;.*$$//' dos/read.asm > preproc/read.s
+	sed 's/;.*$$//' dos/ldr.asm > preproc/ldr.s
 
 	sed 's/;.*$$//' doel/emain.asm > preproc/emain.s
 	sed 's/;.*$$//' doel/eint.asm > preproc/eint.s
@@ -65,7 +66,7 @@ rv32_make:
 	riscv64-unknown-elf-gcc -march=rv32imafc -mabi=ilp32f -nostdlib -Wa,-defsym,LANG_$(DOSLANG)=1 -I. -I../inc -T link.ld \
 	preproc/fwboot.s preproc/main.s preproc/cmd.s preproc/api.s preproc/str.s preproc/uart.s preproc/ver.s \
 	preproc/help.s preproc/echo.s preproc/emain.s preproc/eint.s preproc/fpec.s \
-	preproc/mem.s preproc/file.s preproc/read.s -o boot.elf
+	preproc/mem.s preproc/file.s preproc/read.s preproc/ldr.s -o boot.elf
 
 	# Rid of all preprocessing evidence!
 	rm -rf preproc
