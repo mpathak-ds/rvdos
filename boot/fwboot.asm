@@ -70,6 +70,11 @@ TrapHandler:
 	call MainHandleTrap
 
 	;advance by 4 if ecall
+
+	lw t0, 16(sp)
+	li t1, 2
+	beq t0, t1, .skip_ecall
+	
 	csrr t2, mepc
 	addi t2, t2, 4
 	csrw mepc, t2

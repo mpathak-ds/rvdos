@@ -77,6 +77,10 @@ MainHandleTrap:
 	li t2, 1
 	beq t0, t2, .ex_read_char
 
+	;ecall 2
+	li t2, 2
+	beq t0, t2, .ex_exit_prog
+
 .trap_exit:
 	lw s0, 8(sp)
 	lw ra, 12(sp)
@@ -96,6 +100,13 @@ MainHandleTrap:
 	call ReadCharacterB
 	;return val
 	sw a0, 16(s0)
+	j .trap_exit
+
+;ECALL 2 - ExitProgram
+;No arguments
+.ex_exit_prog:
+	la t0, .ldr_prg_done
+	csrw mepc, t0
 	j .trap_exit
 
 .data

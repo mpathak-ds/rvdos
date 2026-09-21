@@ -151,6 +151,8 @@ cmd_table:
 	.word cmd_name_peek, CmdPeek
 	.word cmd_name_poke, CmdPoke
 	.word cmd_name_read, CmdRead
+	.word cmd_name_load, LdrLoadDrv
+	.word cmd_name_run, LdrLoadProg
 	.word 0 ;end of table
 
 cmd_name_ver: .string "ver"
@@ -160,6 +162,8 @@ cmd_name_emu: .string "doel86"
 cmd_name_peek: .string "peek"
 cmd_name_poke: .string "poke"
 cmd_name_read: .string "read"
+cmd_name_load: .string "load"
+cmd_name_run: .string "run"
 
 .bss
 .align 4
