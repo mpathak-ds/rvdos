@@ -43,7 +43,7 @@ LdrLoadDrv:
 	j .ldr_drv_done
 
 .ldr_drv_err:
-	la a0, _ldr_fail_err
+	la a0, _prog_err_msg
 	call WriteString
 
 .ldr_drv_done:
@@ -80,7 +80,7 @@ LdrLoadProg:
 	j .ldr_prg_done
 
 .ldr_prg_err:
-	la a0, _ldr_fail_err
+	la a0, _prog_err_msg
 	call WriteString
 
 .ldr_prg_done:
@@ -95,7 +95,6 @@ LdrLoadProg:
 .data
 .align 4
 _ldr_ldrv_msg: .string "Loading "
-_ldr_fail_err: .string "No such program."
 
 .bss
 .align 4

@@ -13,6 +13,7 @@
 .global FsWriteFile
 .global FsReadFile
 .global FsSafeWriteStorage
+.global FsListFiles
 
 .include "inc/priv/fs.inc"
 
@@ -760,6 +761,81 @@ rf_toobig:
 .rf_done:
 	lw s4, 8(sp)
 	lw s3, 12(sp)
+	lw s2, 16(sp)
+	lw s1, 20(sp)
+	lw s0, 24(sp)
+	lw ra, 28(sp)
+	addi sp, sp, 32
+	ret
+
+FsListFiles:
+	addi sp, sp, -32
+	sw ra, 28(sp)
+	sw s0, 24(sp)
+	sw s1, 20(sp)
+	sw s2, 16(sp)
+
+	li s0, FS_DIR_BASE
+	li s1, FS_DIRENT_NUM
+
+lf_loop:
+	beqz s1, lf_done
+
+	lbu t0, 0(s0)
+	li t1, FS_STATE_USED
+	bne t0, t1, lf_next
+
+	addi s2, sp, 0
+	addi t2, s0, 1
+
+	li t3, FS_NAME_LEN
+lf_copy_name:
+	beqz t3, lf_check_ext
+	lbu t4, 0(t2)
+	beqz t4, lf_check_ext
+	sb t4, 0(s2)
+	addi s2, s2, 1
+	addi t2, t2, 1
+	addi t3, t3, -1
+	j lf_copy_name
+
+lf_check_ext:
+	li t0, FS_NAME_LEN
+	addi t2, s0, 1
+	add t2, t2, t0
+
+	lbu t4, 0(t2)
+	beqz t4, lf_null_term
+
+	li t5, '.'
+	sb t5, 0(s2)
+	addi s2, s2, 1
+
+	li t3, FS_EXT_LEN
+lf_copy_ext:
+	beqz t3, lf_null_term
+	lbu t4, 0(t2)
+	beqz t4, lf_null_term
+	sb t4, 0(s2)
+	addi s2, s2, 1
+	addi t2, t2, 1
+	addi t3, t3, -1
+	j lf_copy_ext
+
+lf_null_term:
+	sb zero, 0(s2)
+
+	mv a0, sp
+	call WriteString
+	li a0, '\n'
+	call WriteCharacter
+
+lf_next:
+	addi s0, s0, FS_DIRENT_SIZE
+	addi s1, s1, -1
+	j lf_loop
+
+lf_done:
 	lw s2, 16(sp)
 	lw s1, 20(sp)
 	lw s0, 24(sp)

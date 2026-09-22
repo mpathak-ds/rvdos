@@ -43,19 +43,67 @@ cmd_repl_l1:
 
 cmd_loop: j cmd_loop
 
+CheckComExtension:
+	mv t0, a0
+
+.glen_loop:
+	lb t1, 0(t0)
+	beqz t1, .glen_done
+	addi t0, t0, 1
+	j .glen_loop
+
+.glen_done:
+	sub t1, t0, a0
+	li t2, 4
+	blt t1, t2, .ext_no_match
+
+	addi t0, t0, -4
+
+	lb t1, 0(t0)
+	li t2, '.'
+	bne t1, t2, .ext_no_match
+
+	lb t1, 1(t0)
+	li t2, 'c'
+	li t3, 'C'
+	beq t1, t2, .chk_o
+	bne t1, t3, .ext_no_match
+
+.chk_o:
+	lb t1, 2(t0)
+	li t2, 'o'
+	li t3, 'O'
+	beq t1, t2, .chk_m
+	bne t1, t3, .ext_no_match
+
+.chk_m:
+	lb t1, 3(t0)
+	li t2, 'm'
+	li t3, 'M'
+	beq t1, t2, .ext_match
+	bne t1, t3, .ext_no_match
+
+.ext_match:
+	li a0, 1
+	ret
+
+.ext_no_match:
+	li a0, 0
+	ret
+
 CmdParse:
 	addi sp, sp, -32
-    sw ra, 28(sp)
-    sw s0, 24(sp)
-    sw s1, 20(sp)
-    sw s2, 16(sp)
+	sw ra, 28(sp)
+	sw s0, 24(sp)
+	sw s1, 20(sp)
+	sw s2, 16(sp)
 
 	;
 	;s0 = scanning cursor, s1 = start of cmd tok,
 	;s2 = ptr to args string
 	;
 
-    mv s0, a0
+	mv s0, a0
 
 .pd_skip_leading:
 	lb t0, 0(s0)
@@ -92,44 +140,55 @@ CmdParse:
 
 .pd_args_ptr_set:
 	mv s2, s0
-    la t2, cmd_table
+	la t2, cmd_table
 .pd_table_loop:
 	;name pointer
-    lw t3, 0(t2)
-    beqz t3, .pd_not_found
-    ;handler pointer
-    lw t4, 4(t2)
+	lw t3, 0(t2)
+	beqz t3, .pd_not_found
+	;handler pointer
+	lw t4, 4(t2)
 
-    mv a0, s1
-    mv a1, t3
-    call StrCmp
-    beqz a0, .pd_match
+	mv a0, s1
+	mv a1, t3
+	call StrCmp
+	beqz a0, .pd_match
 
-    addi t2, t2, 8
-    j .pd_table_loop
+	addi t2, t2, 8
+	j .pd_table_loop
 
 .pd_match:
 	;trimmed arguments to handler
-    mv a0, s2
-    jalr t4
-    j .pd_ret
+	mv a0, s2
+	jalr t4
+	j .pd_ret
 
 .pd_not_found:
-    la a0, unknown_msg
-    call WriteString
-    mv a0, s1
-    call WriteString
-    la a0, new_line
-    call WriteString
+	mv a0, s1
+
+	;check if COM
+	call CheckComExtension
+	bnez a0, .pd_launch_emu
+
+	;not com
+	mv a0, s1
+	mv a1, s2
+	call LdrLoadProg
+	j .pd_ret
+
+.pd_launch_emu:
+	mv a0, s1
+	mv a1, s2
+	call EmuStartup
+	j .pd_ret
 
 .pd_empty:
 .pd_ret:
-    lw ra, 28(sp)
-    lw s0, 24(sp)
-    lw s1, 20(sp)
-    lw s2, 16(sp)
-    addi sp, sp, 32
-    ret
+	lw ra, 28(sp)
+	lw s0, 24(sp)
+	lw s1, 20(sp)
+	lw s2, 16(sp)
+	addi sp, sp, 32
+	ret
 
 ;
 ;Variables
@@ -137,33 +196,30 @@ CmdParse:
 
 .data
 welcome_banner:
-    .string "RV-DOS Version 1.00\n> "
+	.string "RV-DOS Version 1.00\n> "
 new_line:
 	.string "\n"
 prompt: .string "> "
-unknown_msg: .string "Bad command: "
 
 cmd_table:
 	.word cmd_name_ver, CmdVer
 	.word cmd_name_help, CmdHelp
 	.word cmd_name_echo, CmdEcho
-	.word cmd_name_emu, EmuStartup
 	.word cmd_name_peek, CmdPeek
 	.word cmd_name_poke, CmdPoke
 	.word cmd_name_read, CmdRead
 	.word cmd_name_load, LdrLoadDrv
-	.word cmd_name_run, LdrLoadProg
+	.word cmd_name_dir, FsListFiles
 	.word 0 ;end of table
 
 cmd_name_ver: .string "ver"
 cmd_name_help: .string "help"
 cmd_name_echo: .string "echo"
-cmd_name_emu: .string "doel86"
 cmd_name_peek: .string "peek"
 cmd_name_poke: .string "poke"
 cmd_name_read: .string "read"
-cmd_name_load: .string "load"
-cmd_name_run: .string "run"
+cmd_name_load: .string "start"
+cmd_name_dir: .string "dir"
 
 .bss
 .align 4

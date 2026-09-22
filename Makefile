@@ -75,14 +75,14 @@ rv32_make:
 	riscv64-unknown-elf-size boot.elf
 
 cfg:
-	cd app/hello && make && cd ../../
+	cd app/fib && make && cd ../../
 
 	cd ex/hello && make && cd ../../
 	cd tools/fs && make && (./mktffs ../../osimg.img DELETE HELLO.COM || true) && (./mktffs ../../osimg.img DELETE BEAST.COM || true) \
-	&& (./mktffs ../../osimg.img DELETE HELLO.BIN || true) && ./mktffs ../../osimg.img CREATE HELLO.COM 4 \
-	&& ./mktffs ../../osimg.img CREATE BEAST.COM 78 && ./mktffs ../../osimg.img CREATE HELLO.BIN 8 \
+	&& (./mktffs ../../osimg.img DELETE FIB.BIN || true) && ./mktffs ../../osimg.img CREATE HELLO.COM 4 \
+	&& ./mktffs ../../osimg.img CREATE BEAST.COM 78 && ./mktffs ../../osimg.img CREATE FIB.BIN 16 \
 	&& ./mktffs ../../osimg.img WRITE HELLO.COM ../../ex/hello/doel86.com && ./mktffs ../../osimg.img WRITE BEAST.COM ../../../BEAST.COM \
-	&& ./mktffs ../../osimg.img WRITE HELLO.BIN ../../main.bin \
+	&& ./mktffs ../../osimg.img WRITE FIB.BIN ../../main.bin \
 	&& make clean && cd ../../
 	cd ex/hello && make clean && cd ../../ && hexdump -C main.bin && rm main.bin
 

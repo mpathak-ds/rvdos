@@ -133,3 +133,7 @@ MainHandleTrap:
         .endif
     .endif
 .endif
+
+.global _format_msg
+.global _first_boot
+.global _prog_err_msg
